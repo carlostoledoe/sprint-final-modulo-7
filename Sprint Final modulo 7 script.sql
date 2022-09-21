@@ -253,8 +253,18 @@ INSERT INTO telovendofinal.telefono (id_telefono, id_proveedor_fk, telefono) VAL
 INSERT INTO telovendofinal.telefono (id_telefono, id_proveedor_fk, telefono) VALUES (10, 5, 926262422);
 
 
+-- Ingreso de categorías 
+INSERT INTO telovendofinal.categoria (id_categoria, nombre) VALUES (1, 'frutas');
+INSERT INTO telovendofinal.categoria (id_categoria, nombre) VALUES (2, 'electrónica');
+INSERT INTO telovendofinal.categoria (id_categoria, nombre) VALUES (3, 'vestimenta');
+INSERT INTO telovendofinal.categoria (id_categoria, nombre) VALUES (4, 'abarrotes');
+INSERT INTO telovendofinal.categoria (id_categoria, nombre) VALUES (5, 'computación');
+
+
+
+
 -- Ingreso relaciones Proveedor con su Categiría:
-INSERT INTO proveedor_categoria VALUES (1,1), (2,2), (3,3), (4,1), (5,2);
+INSERT INTO telovendofinal.proveedor_categoria VALUES (1,1), (2,2), (3,3), (4,1), (5,2);
 
 
 -- Ingreso de 10 productos:
@@ -271,18 +281,74 @@ INSERT INTO telovendofinal.producto (id_producto, nombre, id_categoria_fk, stock
 
 
 -- Cuál es la categoría de productos que más se repite.
+-- Este query entrega la categoría que más se repite. Debido a que pueden ser "varias" las categorías que más se 
+-- repiten, se realizan dos tablas (ta y tb). La tabla "ta" cuenta las categorías y las agrupa por su cantidad.
+-- La tabla "tb" agrupa por cantidad y las ordenda de mayor a menor y saca el valor más alto (entrega un número).
+-- Luego, con un INNER JOIN (segundo), se obtiene la (o las) categoría con más cantidad o que se repiten. 
+-- Con el INNER JOIN (primero) se obtiene el nombre de la categoría
+
+SELECT ca.nombre, res.co FROM categoria as ca
+INNER JOIN -- (Primero)
+	(SELECT ta.id_categoria_fk, ta.cont AS co FROM 
+		(SELECT id_categoria_fk, COUNT(id_categoria_fk) AS cont FROM producto
+		GROUP BY id_categoria_fk) AS ta -- Tabla "ta" (agrupa por cantidad)
+	INNER JOIN -- (Segundo)
+		(SELECT id_categoria_fk, COUNT(id_categoria_fk) AS cont FROM producto
+		GROUP BY id_categoria_fk ORDER BY cont DESC LIMIT 1) AS tb -- Tabla "tb" (saca el valor máximo de la agrupación)
+	ON ta.cont = tb.cont) 
+    AS res --
+ON ca.id_categoria = res.co;
+-- R: La categoría que más se repite es vestimenta con 3 artículos
 
 
 
 
 
-SELECT id_categoria_fk, COUNT(id_categoria_fk) AS cont FROM producto
-GROUP BY id_categoria_fk ORDER BY cont DESC;
+
+-- Cuáles son los productos con mayor stock
+SELECT nombre, stock FROM producto
+ORDER BY stock DESC LIMIT 3;
+-- R: Los tres productos con más stock son: frutillas con 130 unidades, manzana roja con 100 y arroz con 80
+
+
+
+
+-- Qué color de producto es más común en nuestra tienda.
+-- Este query entrega el color que más se repite. Debido a que pueden ser "varios" los colores que más se 
+-- repiten, se realizan dos tablas (ta y tb). La tabla "ta" cuenta los coloress y los agrupa por su cantidad.
+-- La tabla "tb" agrupa por cantidad y los ordenda de mayor a menor y saca el valor más alto (entrega un número).
+-- Luego, con un INNER JOIN se obtiene los colores con más cantidad o que se repiten. 
+
+SELECT ta.color, ta.cont FROM 
+	(SELECT color, count(color) as cont FROM producto GROUP BY color) as ta -- Tabla "ta" 
+INNER JOIN 
+	(SELECT COUNT(color) AS cont FROM producto GROUP BY color ORDER BY cont DESC LIMIT 1) AS tb -- Tabla "tb"
+ON tb.cont = ta.cont;
+-- Los colores que más se repiten es el rojo, café y blanco
 
 
 
 
 
+-- Cual o cuales son los proveedores con menor stock de productos.
+-- El siguiente query entrega los 3 proveedores con menos stock. El primer INNER JOIN relaciona los 3 productos con
+-- menos stock con su proveedor basado en su llave foranea, de este se obtiene los id de los proveedores con
+-- menos stock. El segundo INNER JOIN relaciona su id con el nombre.
+
+SELECT pro.nom_corporativo, tot.sst as 'Stock', tot.nn as 'Producto' FROM proveedor AS pro
+INNER JOIN -- (Segundo)
+(SELECT pc.proveedor_id_proveedor as idp, ca.stock as sst, ca.nombre as nn FROM proveedor_categoria AS pc
+INNER JOIN -- (Primero)
+(SELECT id_categoria_fk, stock, nombre FROM producto ORDER BY stock ASC LIMIT 3) AS ca
+ON pc.proveedor_id_proveedor = ca.id_categoria_fk) AS tot
+ON pro.id_proveedor = tot.idp;
+-- Los tres proveedores con menos stock son: Electrónica Nacional con 10 productos (Computadores), Ropero Feliz con
+-- 30 productos (zapatos) y Ropero Feliz con 40 productos (poleras). 
 
 
 
+
+-- Cambien la categoría de productos más popular por ‘Electrónica y computación’.
+-- Supuesto: La categoría más popular es "Vestimenta", ID = 3
+
+UPDATE telovendofinal.categoria SET nombre = 'Electrónica y computación' WHERE (id_categoria = 3);
